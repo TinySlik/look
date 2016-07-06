@@ -20,7 +20,20 @@ function MyBoard:ctor(levelData)
     self.batch:setPosition(display.cx, display.cy)
     self:addChild(self.batch)
 
-    self.grid = clone(levelData.grid)
+    self.grid = {}
+
+    --多加上一个屏幕的缓冲格子
+    for i=1,levelData.rows * 2 do
+        self.grid[i] = {}
+        if levelData.grid[i] == nil then
+            levelData.grid[i] = {}
+        end
+        for j=1,levelData.cols do
+            self.grid[i][j] = levelData.grid[i][j]
+        end
+    end
+
+    -- self.grid = clone(levelData.grid)
     self.rows = levelData.rows
     self.cols = levelData.cols
     self.cells = {}
@@ -123,6 +136,7 @@ function MyBoard:checkAll()
     for _, cell in ipairs(self.cells) do
         self:checkCell(cell)
     end
+    print("length of self.cells" , #self.cells)
 end
 
 function MyBoard:checkCell(cell)
@@ -204,21 +218,24 @@ function MyBoard:checkCell(cell)
 
     
 end
-
-function MyBoard:changeSingedCell()
+--通过缺省的机制来实现同一个函数的多种不同用法
+function MyBoard:changeSingedCell(onAnimationComplete)
     local sum = 0
     local DropList = {}
 
     for i,v in pairs(self.cells) do
         if v.isNeedClean then
             sum = sum +1
+            local drop_pad = 0
             local row = v.row
             local col = v.col
             local x = col * NODE_PADDING + self.offsetX
             local y = (self.rows + 1)* NODE_PADDING + self.offsetY
             for i,v in pairs(DropList) do
                 if col == v.col then
+                    drop_pad = drop_pad + 1
                     y = y + NODE_PADDING
+                    table.remove(DropList,i) 
                 end
             end
 
@@ -227,13 +244,26 @@ function MyBoard:changeSingedCell()
             cell.isNeedClean = false
             cell:setPosition(x, y)
             cell:setScale(GAME_CELL_STAND_SCALE * GAME_CELL_EIGHT_ADD_SCALE * 1.65)
-            cell.row = self.rows
+            cell.row = self.rows + drop_pad
             cell.col = col
-            self.grid[self.rows][col] = cell
+
+            self.grid[self.rows + drop_pad][col] = cell
+
+            if onAnimationComplete == nil then
+                self.batch:removeChild(v, true)
+                self.grid[row][col] = nil
+            else
+            end
+            
 
             self.cells[i] = cell
             self.batch:addChild(cell, COIN_ZORDER)
         end
+    end
+    local temp = nil
+
+    for i,v in pairs(DropList) do
+        print(v.row,v.col)
     end
 end
 
