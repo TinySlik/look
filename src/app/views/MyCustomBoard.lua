@@ -9,6 +9,9 @@ end)
 local NODE_PADDING   = 100 * GAME_CELL_STAND_SCALE
 local NODE_ZORDER    = 0
 
+local  curSwapBeginRow = -1
+local  curSwapBeginCol = -1
+
 local COIN_ZORDER    = 1000
 
 function MyBoard:ctor(levelData)
@@ -98,7 +101,6 @@ function MyBoard:ctor(levelData)
                 end
             end
         end
-        
     end
 
     self:setNodeEventEnabled(true)
@@ -130,6 +132,17 @@ function MyBoard:getCell(row, col)
 end
 
 function MyBoard:onTouch(event, x, y)
+    if event == "began" then
+        local row,col = self:getRandC(x, y)
+        curSwapBeginRow = row
+        curSwapBeginCol = col
+        print(row,col)
+    elseif event == "ended" then
+        local row,col = self:getRandC(x, y)
+        print(row,col)
+        self:swap(curSwapBeginRow, curSwapBeginCol, row, col, function()
+        end)
+    end
     return true
 end
 
@@ -221,8 +234,6 @@ function MyBoard:checkCell(cell)
             v.isNeedClean = true
         end
     end
-
-    
 end
 --通过缺省的机制来实现同一个函数的多种不同用法
 function MyBoard:changeSingedCell(onAnimationComplete)
@@ -297,7 +308,6 @@ function MyBoard:changeSingedCell(onAnimationComplete)
     end
     --填补self.grid空缺
     --或执行最后的所有动画步骤
-
     if onAnimationComplete == nil then
         for i=1,self.rows do
             for j=1,self.cols do
@@ -313,20 +323,72 @@ function MyBoard:changeSingedCell(onAnimationComplete)
     end
 end
 
-function MyBoard:swap(row1,col1,row2,col2)
-    local temp
-    if self.grid[row1][col1] then
-        self.grid[row1][col1].row = row2
-        self.grid[row1][col1].col = col2
+--交换格子内容
+function MyBoard:swap( row1 , col1 , row2 , col2 , callBack )
+    local swap = function(row1_,col1_,row2_,col2_)
+        local temp
+        if self:getCell(row1_,col1_) then
+            self.grid[row1_][col1_].row = row2
+            self.grid[row1_][col1_].col = col2
+        end
+        if self:getCell(row2_,col2_) then
+            self.grid[row2_][col2_].row = row1
+            self.grid[row2_][col2_].col = col1
+        end
+        temp = self.grid[row1_][col1_] 
+        if self.grid[row2_] and  self.grid[row2_][col2_] then
+            self.grid[row1_][col1_] = self.grid[row2_][col2_]
+            self.grid[row2_][col2_] = temp
+        end
     end
-    if self.grid[row2][col2] then
-        self.grid[row2][col2].row = row1
-        self.grid[row2][col2].col = col2
+
+    if callBack == nil then
+        swap(row1,col1,row2,col2)
+        return
     end
-    
-    temp = self.grid[row1][col1] 
-    self.grid[row1][col1] = self.grid[row2][col2]
-    self.grid[row2][col2] = temp
+
+    if self:getCell(row1,col1) == nil or self:getCell(row2,col2) == nil then
+        print("have one nil value with the swap function!!!!")
+        return
+    end
+
+    local X1,Y1 = col1 * NODE_PADDING + self.offsetX , row1  * NODE_PADDING + self.offsetY
+    local X2,Y2 = col2 * NODE_PADDING + self.offsetX , row2  * NODE_PADDING + self.offsetY
+    local moveTime = 0.6 
+    if timeScale then
+        moveTime = moveTime * timeScale
+    end
+    if callBack then
+        --改动锚点的渲染前后顺序，移动时前置
+        self.grid[row2][col2]:setLocalZOrder(COIN_ZORDER + 1)
+        self.grid[row1][col1]:runAction(transition.sequence({
+                cc.MoveTo:create(moveTime, cc.p(X2,Y2)),
+                cc.CallFunc:create(function()
+                    --改动锚点的渲染前后顺序，移动完成后回归原本zorder
+                    self.grid[row2][col2]:setLocalZOrder(COIN_ZORDER)
+                    self:swap(row1,col1,row2,col2)
+                    callBack()
+                end)
+            }))
+        self.grid[row2][col2]:runAction(cc.MoveTo:create(moveTime, cc.p(X1,Y1)))
+    else
+    end
+end
+
+function MyBoard:getRandC(x,y)
+    local padding = NODE_PADDING / 2
+    for _, cell in ipairs(self.cells) do
+        local cx, cy = cell:getPosition()
+        cx = cx + display.cx
+        cy = cy + display.cy
+        if x >= cx - padding
+            and x <= cx + padding
+            and y >= cy - padding
+            and y <= cy + padding then
+            return cell.row , cell.col
+        end
+    end
+    return -1 , -1
 end
 
 function MyBoard:onEnter()
