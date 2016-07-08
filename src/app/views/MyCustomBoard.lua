@@ -15,7 +15,8 @@ local  curSwapBeginCol = -1
 local isEnableTouch = true
 local isInTouch = true
 
-local COIN_ZORDER    = 1000
+local SWAP_TIME = 0.6
+local CELL_ZORDER    = 1000
 
 local scheduler = cc.Director:getInstance():getScheduler()
 
@@ -73,7 +74,7 @@ function MyBoard:ctor(levelData)
                     cell.col = col
                     self.grid[row][col] = cell
                     self.cells[#self.cells + 1] = cell
-                    self.batch:addChild(cell, COIN_ZORDER)
+                    self.batch:addChild(cell, CELL_ZORDER)
                 end
             end
         end
@@ -104,7 +105,7 @@ function MyBoard:ctor(levelData)
                     cell.col = col
                     self.grid[row][col] = cell
                     self.cells[#self.cells + 1] = cell
-                    self.batch:addChild(cell, COIN_ZORDER)
+                    self.batch:addChild(cell, CELL_ZORDER)
                 end
             end
         end
@@ -139,14 +140,20 @@ function MyBoard:getCell(row, col)
 end
 
 function MyBoard:onTouch(event, x, y)
+
     if not isEnableTouch then
-        return
+        return false
     end
     if event == "began" then
         local row,col = self:getRandC(x, y)
         curSwapBeginRow = row
         curSwapBeginCol = col
+        if curSwapBeginRow == -1 or curSwapBeginCol == -1 then
+            return false 
+        end
         isInTouch = true
+        self.grid[curSwapBeginRow][curSwapBeginCol]:setLocalZOrder(CELL_ZORDER+1)
+        return true
     end
     if isInTouch and (event == "moved" or event == "ended"  )then
         local padding = NODE_PADDING / 2
@@ -154,24 +161,32 @@ function MyBoard:onTouch(event, x, y)
         local cx, cy = cell_center:getPosition()
         cx = cx + display.cx
         cy = cy + display.cy
-
-        if event == "ended" then
+        --锚点归位
+        local AnchBack = function()
             isInTouch = false
             local p_a = cell_center:getAnchorPoint()
             local x_a = (0.5 - p_a.x ) *  NODE_PADDING + curSwapBeginCol * NODE_PADDING + self.offsetX
             local y_a = (0.5 - p_a.y) *  NODE_PADDING + curSwapBeginRow * NODE_PADDING + self.offsetY
             cell_center:setAnchorPoint(cc.p(0.5,0.5))
             cell_center:setPosition(cc.p(x_a  , y_a ))
+        end
+        --动画回到格子定义点
+        local AnimBack = function()
             isEnableTouch = false
                 cell_center:runAction(
                     transition.sequence({
-                    cc.MoveTo:create(0.4,cc.p(curSwapBeginCol * NODE_PADDING + self.offsetX,curSwapBeginRow * NODE_PADDING + self.offsetY)),
+                    cc.MoveTo:create(SWAP_TIME/2,cc.p(curSwapBeginCol * NODE_PADDING + self.offsetX,curSwapBeginRow * NODE_PADDING + self.offsetY)),
                     cc.CallFunc:create(function()
                           isEnableTouch = true
                     end)
                 }))
-            cell_center:runAction(cc.ScaleTo:create(0.5,CELL_SCALE))
-            return true
+            cell_center:runAction(cc.ScaleTo:create(SWAP_TIME/2,CELL_SCALE))
+            self.grid[curSwapBeginRow][curSwapBeginCol]:setLocalZOrder(CELL_ZORDER)
+        end
+        if event == "ended" then
+            AnchBack()
+            AnimBack()
+            return
         end
 
         if x < cx - 2*padding
@@ -179,41 +194,29 @@ function MyBoard:onTouch(event, x, y)
             or y < cy - 2*padding
             or y > cy + 2*padding then
             isInTouch = false
-
-            --划归锚点偏移
-            local p_a = cell_center:getAnchorPoint()
-            local x_a = (0.5 - p_a.x ) *  NODE_PADDING + curSwapBeginCol * NODE_PADDING + self.offsetX
-            local y_a = (0.5 - p_a.y) *  NODE_PADDING + curSwapBeginRow * NODE_PADDING + self.offsetY
-            cell_center:setAnchorPoint(cc.p(0.5,0.5))
-            cell_center:setPosition(cc.p(x_a  , y_a ))
-
+            AnchBack()
+            local row,col = self:getRandC(x, y)
             --进入十字框以内
-            if (x >= cx - padding
+            if ((x >= cx - padding
             and x <= cx + padding)
             or (y >= cy - padding
-            and y <= cy + padding) then
-                local row,col = self:getRandC(x, y)
-                isEnableTouch = false
-                self:swap(row,col,curSwapBeginRow,curSwapBeginCol,
-                    function()
-                        isEnableTouch = true
+            and y <= cy + padding) )and (row ~= -1 and col ~= -1)  then
+                --防止移动超过一格的情况
+                if row - curSwapBeginRow > 1 then row = curSwapBeginRow + 1 end
+                if curSwapBeginRow - row > 1 then row = curSwapBeginRow - 1 end
+                if col -  curSwapBeginCol > 1 then col = curSwapBeginCol + 1 end
+                if curSwapBeginCol - col  > 1 then col = curSwapBeginCol - 1 end
+                    self:swap(row,col,curSwapBeginRow,curSwapBeginCol,function()
+                        self:checkCell(self.grid[row][col])
+                        self:checkCell(self.grid[curSwapBeginRow][curSwapBeginCol])
                         if self:checkAll() then
-                        self:changeSingedCell(true)
+                            self:changeSingedCell(function() end)
                         end
                     end
-                    )
-                cell_center:runAction(cc.ScaleTo:create(0.5,CELL_SCALE))
+                )
             else
-                isEnableTouch = false
-                cell_center:runAction(
-                    transition.sequence({
-                    cc.MoveTo:create(0.4,cc.p(curSwapBeginCol * NODE_PADDING + self.offsetX,curSwapBeginRow * NODE_PADDING + self.offsetY)),
-                    cc.CallFunc:create(function()
-                          isEnableTouch = true
-                    end)
-                }))
-                cell_center:runAction(cc.ScaleTo:create(0.5,CELL_SCALE))
-                return true
+                AnimBack()
+                return
             end
         else
             x_vec = (cx - x)/ NODE_PADDING * 0.3 + 0.5
@@ -360,7 +363,7 @@ function MyBoard:changeSingedCell(onAnimationComplete)
             end
 
             self.cells[i] = cell
-            self.batch:addChild(cell, COIN_ZORDER)
+            self.batch:addChild(cell, CELL_ZORDER)
         end
     end
 
@@ -464,12 +467,12 @@ function MyBoard:swap( row1 , col1 , row2 , col2 , callBack )
     end
 
     --改动锚点的渲染前后顺序，移动时前置
-    self.grid[row2][col2]:setLocalZOrder(COIN_ZORDER + 1)
+    self.grid[row2][col2]:setLocalZOrder(CELL_ZORDER + 1)
     self.grid[row1][col1]:runAction(transition.sequence({
             cc.MoveTo:create(moveTime, cc.p(X2,Y2)),
             cc.CallFunc:create(function()
                 --改动锚点的渲染前后顺序，移动完成后回归原本zorder
-                self.grid[row2][col2]:setLocalZOrder(COIN_ZORDER)
+                self.grid[row2][col2]:setLocalZOrder(CELL_ZORDER)
                 self:swap(row1,col1,row2,col2)
                 callBack()
             end)
