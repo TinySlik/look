@@ -231,6 +231,10 @@ function MyBoard:checkAll()
     for _, cell in ipairs(self.cells) do
         self:checkCell(cell)
     end
+    return self:checkNotClean()
+end
+
+function MyBoard:checkNotClean()
     for _, cell in ipairs(self.cells) do
         if cell.isNeedClean then
             return true
