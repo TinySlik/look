@@ -9,6 +9,7 @@ end)
 local NODE_PADDING   = 100 * GAME_CELL_STAND_SCALE
 local NODE_ZORDER    = 0
 local CELL_SCALE = 1.0
+local MOVE_TIME = 0.6
 
 local curSwapBeginRow = -1
 local curSwapBeginCol = -1
@@ -188,7 +189,7 @@ function MyBoard:onTouch(event, x, y)
                         else
                             self:swap(row,col,curSwapBeginRow,curSwapBeginCol,function()
                                 isEnableTouch = true
-                            end)
+                            end,0.6)
                         end
                     end
                 )
@@ -421,7 +422,7 @@ function MyBoard:lined(  )
 end
 
 --交换格子内容
-function MyBoard:swap( row1 , col1 , row2 , col2 , callBack )
+function MyBoard:swap( row1 , col1 , row2 , col2 , callBack ,timeScale)
     local swap = function(row1_,col1_,row2_,col2_)
         local temp
         if self:getCell(row1_,col1_) then
@@ -451,7 +452,7 @@ function MyBoard:swap( row1 , col1 , row2 , col2 , callBack )
 
     local X1,Y1 = col1 * NODE_PADDING + self.offsetX , row1  * NODE_PADDING + self.offsetY
     local X2,Y2 = col2 * NODE_PADDING + self.offsetX , row2  * NODE_PADDING + self.offsetY
-    local moveTime = 0.6 
+    local moveTime = MOVE_TIME
     if timeScale then
         moveTime = moveTime * timeScale
     end
