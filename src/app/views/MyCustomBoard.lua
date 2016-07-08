@@ -209,7 +209,7 @@ function MyBoard:onTouch(event, x, y)
                     self:swap(row,col,curSwapBeginRow,curSwapBeginCol,function()
                         self:checkCell(self.grid[row][col])
                         self:checkCell(self.grid[curSwapBeginRow][curSwapBeginCol])
-                        if self:checkAll() then
+                        if self:checkNotClean() then
                             self:changeSingedCell(function() end)
                         end
                     end
