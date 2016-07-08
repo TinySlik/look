@@ -48,68 +48,42 @@ function MyBoard:ctor(levelData)
     self.cells = {}
     self.flipAnimationCount = 0
 
-    if self.rows <= 8 then
+    --超过8格和8格以下的情况
+    --使用八格作为最适宜适配模式
+    if self.cols <= 8 then
         GAME_CELL_EIGHT_ADD_SCALE = 1.0
         self.offsetX = -math.floor(NODE_PADDING * self.cols / 2) - NODE_PADDING / 2
         self.offsetY = -math.floor(NODE_PADDING * self.rows / 2) - NODE_PADDING / 2
         NODE_PADDING   = 100 * GAME_CELL_STAND_SCALE
         CELL_SCALE = GAME_CELL_STAND_SCALE  * 1.65
-        -- create board, place all cells
-        for row = 1, self.rows do
-            local y = row * NODE_PADDING + self.offsetY
-            for col = 1, self.cols do
-                local x = col * NODE_PADDING + self.offsetX
-                local nodeSprite = display.newSprite("#BoardNode.png", x, y)
-                nodeSprite:setScale(GAME_CELL_STAND_SCALE)
-                self.batch:addChild(nodeSprite, NODE_ZORDER)
-
-                local node = self.grid[row][col]
-                if node ~= Levels.NODE_IS_EMPTY then
-                    -- local cell = Cell.new(node)
-                    local cell = Cell.new()
-                    cell.isNeedClean = false
-                    cell:setPosition(x, y)
-                    cell:setScale(GAME_CELL_STAND_SCALE  * 1.65)
-                    cell.row = row
-                    cell.col = col
-                    self.grid[row][col] = cell
-                    self.cells[#self.cells + 1] = cell
-                    self.batch:addChild(cell, CELL_ZORDER)
-                end
-            end
-        end
     else
         self.offsetX = -math.floor(NODE_PADDING * 8 / 2) - NODE_PADDING / 2
         self.offsetY = -math.floor(NODE_PADDING * 8 / 2) - NODE_PADDING / 2
-        GAME_CELL_EIGHT_ADD_SCALE = 8.0 / self.rows
-
-        NODE_PADDING = 100 * GAME_CELL_STAND_SCALE * GAME_CELL_EIGHT_ADD_SCALE
+        GAME_CELL_EIGHT_ADD_SCALE = 8.0 / self.cols
         CELL_SCALE = GAME_CELL_STAND_SCALE * GAME_CELL_EIGHT_ADD_SCALE * 1.65
-        -- create board, place all cells
-        for row = 1, self.rows do
-            local y = row * NODE_PADDING + self.offsetY
-            for col = 1, self.cols do
-                local x = col * NODE_PADDING + self.offsetX
-                local nodeSprite = display.newSprite("#BoardNode.png", x, y)
-                nodeSprite:setScale(GAME_CELL_STAND_SCALE * GAME_CELL_EIGHT_ADD_SCALE)
-                self.batch:addChild(nodeSprite, NODE_ZORDER)
-
-                local node = self.grid[row][col]
-                if node ~= Levels.NODE_IS_EMPTY then
-                    -- local cell = Cell.new(node)
-                    local cell = Cell.new()
-                    cell.isNeedClean = false
-                    cell:setPosition(x, y)
-                    cell:setScale(GAME_CELL_STAND_SCALE * GAME_CELL_EIGHT_ADD_SCALE * 1.65)
-                    cell.row = row
-                    cell.col = col
-                    self.grid[row][col] = cell
-                    self.cells[#self.cells + 1] = cell
-                    self.batch:addChild(cell, CELL_ZORDER)
-                end
+        NODE_PADDING = 100 * GAME_CELL_STAND_SCALE * GAME_CELL_EIGHT_ADD_SCALE
+    end
+    for row = 1, self.rows do
+        local y = row * NODE_PADDING + self.offsetY
+        for col = 1, self.cols do
+            local x = col * NODE_PADDING + self.offsetX
+            local nodeSprite = display.newSprite("#BoardNode.png", x, y)
+            nodeSprite:setOpacity(100)
+            nodeSprite:setScale(CELL_SCALE/1.65)
+            self.batch:addChild(nodeSprite, NODE_ZORDER)
+            local node = self.grid[row][col]
+            if node ~= Levels.NODE_IS_EMPTY then
+                local cell = Cell.new()
+                cell.isNeedClean = false
+                cell.row = row
+                cell.col = col
+                self.grid[row][col] = cell
+                self.cells[#self.cells + 1] = cell
+                self.batch:addChild(cell, CELL_ZORDER)
             end
         end
     end
+    self:lined()
 
     self:setNodeEventEnabled(true)
     self:setTouchEnabled(true)
@@ -402,15 +376,7 @@ function MyBoard:changeSingedCell(onAnimationComplete)
     --填补self.grid空缺
     --或执行最后的所有动画步骤
     if onAnimationComplete == nil then
-        for i=1,self.rows do
-            for j=1,self.cols do
-                local y = i * NODE_PADDING + self.offsetY
-                local x = j * NODE_PADDING + self.offsetX
-                if self.grid[i][j] then
-                    self.grid[i][j]:setPosition(x,y)
-                end
-            end
-        end
+        self:lined()
     else
         for i=1,self.rows do
             for j=1,self.cols do
@@ -431,6 +397,19 @@ function MyBoard:changeSingedCell(onAnimationComplete)
                 self:changeSingedCell(function() end)
             end
         end, 1.23 , false)
+    end
+end
+
+--复位
+function MyBoard:lined(  )
+    for row = 1, self.rows do
+        local y = row * NODE_PADDING + self.offsetY
+        for col = 1, self.cols do
+            local x = col * NODE_PADDING + self.offsetX
+            cell = self.grid[row][col]
+            cell:setPosition(x, y)
+            cell:setScale(CELL_SCALE)
+        end
     end
 end
 
@@ -505,9 +484,9 @@ function MyBoard:onEnter()
 end
 
 function MyBoard:onExit()
+    self:removeAllEventListeners()
     GAME_CELL_EIGHT_ADD_SCALE = 1.0
     NODE_PADDING = 100 * GAME_CELL_STAND_SCALE
-    self:removeAllEventListeners()
 end
 
 return MyBoard
