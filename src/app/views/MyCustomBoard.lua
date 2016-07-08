@@ -379,15 +379,18 @@ function MyBoard:changeSingedCell(onAnimationComplete)
         self:lined()
     else
         for i=1,self.rows do
-            for j=1,self.cols do
+            for j , v in pairs(DropListFinal) do
                 local y = i * NODE_PADDING + self.offsetY
-                local x = j * NODE_PADDING + self.offsetX
-                local cell_t = self.grid[i][j]
+                local x = v.col * NODE_PADDING + self.offsetX
+                local cell_t = self.grid[i][v.col]
                 if cell_t then
-                    cell_t:runAction(transition.sequence({
-                        cc.DelayTime:create(0.2),
-                        cc.MoveTo:create(0.9, cc.p(x, y))
-                    }))
+                    local x_t,y_t = cell_t:getPosition()
+                    if(math.abs(y_t - y) > NODE_PADDING/2 ) then
+                        cell_t:runAction(transition.sequence({
+                            cc.DelayTime:create(0.2),
+                            cc.MoveTo:create(0.9, cc.p(x, y))
+                        }))
+                    end
                 end
             end
         end
