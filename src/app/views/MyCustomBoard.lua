@@ -334,7 +334,13 @@ function MyBoard:changeSingedCell(onAnimationComplete)
                     -- table.remove(DropList,i) 
                 end
             end
-            local cell = Cell.new()
+            local cell = nil
+            if onAnimationComplete == nil then
+                cell = Cell.new()
+            else
+                cell = Cell.new()
+            end
+            
             DropList [#DropList + 1] = cell
             DropHight [#DropHight + 1] = cell
             cell.isNeedClean = false
@@ -415,7 +421,7 @@ function MyBoard:changeSingedCell(onAnimationComplete)
         self.handle  = scheduler:scheduleScriptFunc (function () 
             scheduler:unscheduleScriptEntry(self.handle )
             if self:checkAll() then
-                self:changeSingedCell(true)
+                self:changeSingedCell(function() end)
             end
         end, 1.23 , false)
     end
