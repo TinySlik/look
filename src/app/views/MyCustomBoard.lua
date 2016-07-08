@@ -8,6 +8,7 @@ end)
 
 local NODE_PADDING   = 100 * GAME_CELL_STAND_SCALE
 local NODE_ZORDER    = 0
+local CELL_SCALE = 1.0
 
 local  curSwapBeginRow = -1
 local  curSwapBeginCol = -1
@@ -15,6 +16,8 @@ local isEnableTouch = true
 local isInTouch = true
 
 local COIN_ZORDER    = 1000
+
+local scheduler = cc.Director:getInstance():getScheduler()
 
 function MyBoard:ctor(levelData)
     math.randomseed(tostring(os.time()):reverse():sub(1, 6))
@@ -49,6 +52,7 @@ function MyBoard:ctor(levelData)
         self.offsetX = -math.floor(NODE_PADDING * self.cols / 2) - NODE_PADDING / 2
         self.offsetY = -math.floor(NODE_PADDING * self.rows / 2) - NODE_PADDING / 2
         NODE_PADDING   = 100 * GAME_CELL_STAND_SCALE
+        CELL_SCALE = GAME_CELL_STAND_SCALE  * 1.65
         -- create board, place all cells
         for row = 1, self.rows do
             local y = row * NODE_PADDING + self.offsetY
@@ -79,6 +83,7 @@ function MyBoard:ctor(levelData)
         GAME_CELL_EIGHT_ADD_SCALE = 8.0 / self.rows
 
         NODE_PADDING = 100 * GAME_CELL_STAND_SCALE * GAME_CELL_EIGHT_ADD_SCALE
+        CELL_SCALE = GAME_CELL_STAND_SCALE * GAME_CELL_EIGHT_ADD_SCALE * 1.65
         -- create board, place all cells
         for row = 1, self.rows do
             local y = row * NODE_PADDING + self.offsetY
@@ -187,16 +192,14 @@ function MyBoard:onTouch(event, x, y)
             and x <= cx + padding)
             or (y >= cy - padding
             and y <= cy + padding) then
-
                 local row,col = self:getRandC(x, y)
-
                 isEnableTouch = false
                 self:swap(row,col,curSwapBeginRow,curSwapBeginCol,
                     function()
                         isEnableTouch = true
-                        -- if self:checkAll() then
-                        -- self:changeSingedCell(true)
-                        -- end
+                        if self:checkAll() then
+                        self:changeSingedCell(true)
+                        end
                     end
                     )
                 cell_center:runAction(cc.ScaleTo:create(0.5,CELL_SCALE))
@@ -346,6 +349,8 @@ function MyBoard:changeSingedCell(onAnimationComplete)
                 self.batch:removeChild(v, true)
                 self.grid[row][col] = nil
             else
+                self.batch:removeChild(self.grid[row][col], true)
+                self.grid[row][col] = nil
             end
 
             self.cells[i] = cell
@@ -394,7 +399,25 @@ function MyBoard:changeSingedCell(onAnimationComplete)
             end
         end
     else
-        --
+        for i=1,self.rows do
+            for j=1,self.cols do
+                local y = i * NODE_PADDING + self.offsetY
+                local x = j * NODE_PADDING + self.offsetX
+                local cell_t = self.grid[i][j]
+                if cell_t then
+                    cell_t:runAction(transition.sequence({
+                        cc.DelayTime:create(0.2),
+                        cc.MoveTo:create(0.9, cc.p(x, y))
+                    }))
+                end
+            end
+        end
+        self.handle  = scheduler:scheduleScriptFunc (function () 
+            scheduler:unscheduleScriptEntry(self.handle )
+            if self:checkAll() then
+                self:changeSingedCell(true)
+            end
+        end, 1.23 , false)
     end
 end
 
