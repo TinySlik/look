@@ -10,8 +10,8 @@ local NODE_PADDING   = 100 * GAME_CELL_STAND_SCALE
 local NODE_ZORDER    = 0
 local CELL_SCALE = 1.0
 
-local  curSwapBeginRow = -1
-local  curSwapBeginCol = -1
+local curSwapBeginRow = -1
+local curSwapBeginCol = -1
 local isEnableTouch = true
 local isInTouch = true
 
@@ -185,6 +185,10 @@ function MyBoard:onTouch(event, x, y)
                         self:checkCell(self.grid[curSwapBeginRow][curSwapBeginCol])
                         if self:checkNotClean() then
                             self:changeSingedCell(function() end)
+                        else
+                            self:swap(row,col,curSwapBeginRow,curSwapBeginCol,function()
+                                isEnableTouch = true
+                            end)
                         end
                     end
                 )
@@ -379,7 +383,7 @@ function MyBoard:changeSingedCell(onAnimationComplete)
         self:lined()
     else
         for i=1,self.rows do
-            for j , v in pairs(DropListFinal) do
+            for j , v in pairs(DropHight) do
                 local y = i * NODE_PADDING + self.offsetY
                 local x = v.col * NODE_PADDING + self.offsetX
                 local cell_t = self.grid[i][v.col]
